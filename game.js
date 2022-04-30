@@ -1,22 +1,33 @@
 const canvas = document.querySelector("canvas");
-canvas.width = 600;
-canvas.height = 300;
+const startButton = document.querySelector("button");
 const ctx = canvas.getContext("2d");
-
+canvas.width = 600;
+canvas.height = 250;
+drawCourt();
 
 // listeners
-addEventListener("keydown", e => {
+startButton.addEventListener("click", ()=>{
+    requestAnimationFrame(game);
+    startButton.style.display = "none";
+});
+
+addEventListener("keydown", e =>{
+    ball.isMoving = true;
     switch(e.key){
         case "ArrowUp":
-            playerOne.moveUp()
-            playerTwo.moveUp()
+            playerTwo.moveUp();
             break;
         case "ArrowDown":
-            playerOne.moveDown()
-            playerTwo.moveDown()
+            playerTwo.moveDown();
+            break;
+        case "w" || "W":
+            playerOne.moveUp();
+            break;
+        case "s" || "S":
+            playerOne.moveDown();
             break;
     }
-})
+});
 
 // instances
 const playerOne = getPlayer({});
@@ -27,21 +38,32 @@ const score = {
     right: 0
 }
 
+playerOne.draw();
+playerTwo.draw();
+
+const ballReboundSound = document.createElement("audio");
+const paddleSound = document.createElement("audio");
+const goalSound = document.createElement("audio");
+const aplausse = document.createElement("audio");
+ballReboundSound.src = "./assets/ball_rebound.mp3";
+paddleSound.src = "./assets/paddle.mp3";
+goalSound.src = "./assets/error.mp3";
+aplausse.src = "./assets/aplausse.mp3";
+
 // Game Loop
 function game(){
     clearScreen();
     drawCourt();
     drawScore();
+    ball.draw();
     playerOne.draw();
     playerTwo.draw();
-    ball.draw();
     checkCollition();
-    requestAnimationFrame(game);
+    loserWatch();
 }
-requestAnimationFrame(game);
 
 
-// functions
+// RORO functions
 function getBall({}){
     return {
         x: canvas.width / 2 - 3.5,
@@ -54,12 +76,17 @@ function getBall({}){
         ballSpeed: .7,
         directionX: "right",
         directionY: "up",
+        reboundCounter: 0,
+        isMoving: true,
         movement(){
+            if(!this.isMoving){return}
             // Direction - Left Right
             if(this.x < 0){
                 this.directionX = "right";
+                ballReboundSound.play();
             }else if(this.x > canvas.width - this.w){
                 this.directionX = "left";
+                ballReboundSound.play();
             }
             if(this.directionX === "right")  this.speedX++
             else this.speedX--;
@@ -69,18 +96,20 @@ function getBall({}){
 
             // Direction - Up Down
             if(this.y < 0){
-                this.directionY = "down"
+                this.directionY = "down";
+                ballReboundSound.play();
             }else if(this.y > canvas.height - this.h){
-                this.directionY = "up"
+                this.directionY = "up";
+                ballReboundSound.play();
             }
-            if(this.directionY === "down")  this.speedY++
+            if(this.directionY === "down")  this.speedY++;
             else this.speedY--;
 
             this.speedY*= this.ballSpeed;
             this.y+= this.speedY;
         },
         draw(){
-            this.movement()
+            this.movement();
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x,this.y,this.w,this.h);
         }
@@ -93,7 +122,7 @@ function getPlayer({
 }) {
     return {
         x,
-        y: 0,
+        y: canvas.height/2- 25,
         w: 7,
         h: 50,
         speed: 10,
@@ -127,16 +156,16 @@ function clearScreen(){
 }
 
 function drawScore(){
-    ctx.fillStyle = "white"
-    ctx.font = '44px "Press Start 2P"'
-    ctx.fillText(score.left,canvas.width - canvas.width*.7 - 22,canvas.height/2+ 22);
-    ctx.fillText(score.right,canvas.width - canvas.width*.3 - 22,canvas.height/2+ 22);
+    ctx.fillStyle = "white";
+    ctx.font = '44px "Press Start 2P"';
+    ctx.fillText(score.left,canvas.width - canvas.width*.7 - 22,canvas.height/2+ 22, 50);
+    ctx.fillText(score.right,canvas.width - canvas.width*.3 - 22,canvas.height/2+ 22, 50);
 }
 
 function drawCourt(){
-    let color = "white"
+    let color = "white";
 
-    ctx.fillStyle = "black"
+    ctx.fillStyle = "black";
     ctx.fillRect(0,0,canvas.width,canvas.height);
     
     ctx.strokeStyle = color;
@@ -153,29 +182,61 @@ function drawCourt(){
     ctx.stroke();
     ctx.closePath;
 }
+
+function speedUp() {
+    if(ball.ballSpeed === .78) {return};
+    ball.ballSpeed += 0.002;
+}
+
 function checkCollition() {
     if(playerOne.contains(ball)){
         ball.directionX = "right";
+        speedUp();
+        paddleSound.play();
     }else if(playerTwo.contains(ball)) {
         ball.directionX = "left";
+        speedUp();
+        paddleSound.play();
     }
+    // Score
     if(ball.x < 0){
+        goalSound.play();
         ball.x = canvas.width / 2 - 3.5;
         ball.y = canvas.height / 2 - 3.5;
+        playerOne.y = canvas.height/2 -25;
+        playerTwo.y = canvas.height/2 -25;
+        ball.isMoving = false;
         score.right++;
+        ball.ballSpeed = .7;
         ball.directionX = "right";
     }else if(ball.x > canvas.width - ball.w){
+        goalSound.play();
         ball.x = canvas.width / 2 - 3.5;
         ball.y = canvas.height / 2 - 3.5;
+        playerOne.y = canvas.height/2 -25;
+        playerTwo.y = canvas.height/2 -25;
+        ball.isMoving = false;
         score.left++;
-        ball.directionX = "left"
+        ball.ballSpeed = .7;
+        ball.directionX = "left";
     }
 }
-function getLoser({}){
-    return {
-        draw(){
-            ctx.fillStyle = "red"
-            ctx.fillRect(0,0,canvas.width,canvas.height);
-        }
+
+function loserWatch() {
+    let winner = "";
+    if(score.left === 7) {
+        winner = "PLAYER ONE";
+    }else if(score.right === 7){
+        winner = "PLAYER TWO";
+    }
+    if(score.left === 7 || score.right === 7) {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0,0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.fillText(winner, canvas.width/2- 216, canvas.height/2- 22);
+        ctx.fillText("WIN", canvas.width/2- 66, canvas.height/2+ 22);
+        aplausse.play();
+    }else{
+        requestAnimationFrame(game);
     }
 }
