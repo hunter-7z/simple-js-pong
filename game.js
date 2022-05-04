@@ -3,6 +3,7 @@ const startButton = document.querySelector("button");
 const ctx = canvas.getContext("2d");
 canvas.width = 600;
 canvas.height = 250;
+let spaceCounter = false;
 drawCourt();
 
 // listeners
@@ -14,6 +15,7 @@ startButton.addEventListener("click", ()=>{
 addEventListener("keydown", e =>{
     ball.isMoving = true;
     switch(e.key){
+        // movment players
         case "ArrowUp":
             playerTwo.moveUp();
             break;
@@ -25,6 +27,15 @@ addEventListener("keydown", e =>{
             break;
         case "s" || "S":
             playerOne.moveDown();
+            break;
+        // start game
+        case " ": // space key
+            if(spaceCounter) {
+                break;
+            }
+            requestAnimationFrame(game);
+            startButton.style.display = "none";
+            spaceCounter = !spaceCounter;
             break;
     }
 });
@@ -224,12 +235,12 @@ function checkCollition() {
 
 function loserWatch() {
     let winner = "";
-    if(score.left === 7) {
+    if(score.left === 3) {
         winner = "PLAYER ONE";
-    }else if(score.right === 7){
+    }else if(score.right === 3){
         winner = "PLAYER TWO";
     }
-    if(score.left === 7 || score.right === 7) {
+    if(score.left === 3 || score.right === 3) {
         ctx.fillStyle = "black";
         ctx.fillRect(0,0, canvas.width, canvas.height);
         ctx.fillStyle = "white";
